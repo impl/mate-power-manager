@@ -54,6 +54,8 @@
 #include "gpm-control.h"
 #include "gpm-networkmanager.h"
 
+#define SD_LOGIND_ROOT_CHECK_INHIBITORS (G_GUINT64_CONSTANT(1) << 0)
+
 struct GpmControlPrivate
 {
 	GSettings		*settings;
@@ -112,13 +114,23 @@ gpm_control_systemd_shutdown (void) {
 		return FALSE;
 	}
 
-	res = g_dbus_proxy_call_sync (proxy, "PowerOff",
-				      g_variant_new( "(b)", FALSE),
+	res = g_dbus_proxy_call_sync (proxy, "PowerOffWithFlags",
+				      g_variant_new ("(t)", SD_LOGIND_ROOT_CHECK_INHIBITORS),
 				      G_DBUS_CALL_FLAGS_NONE,
 				      -1,
 				      NULL,
 				      &error
 				      );
+	if (g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_METHOD)) {
+		g_clear_error (&error);
+		res = g_dbus_proxy_call_sync (proxy, "PowerOff",
+					      g_variant_new( "(b)",FALSE),
+					      G_DBUS_CALL_FLAGS_NONE,
+					      -1,
+					      NULL,
+					      &error
+					      );
+	}
 	if (error != NULL) {
 		g_warning ("Error in dbus - %s", error->message);
 		g_error_free (error);
@@ -314,13 +326,23 @@ gpm_control_suspend (GpmControl *control, GError **error)
 			ret = FALSE;
 			goto out;
 		}
-		res = g_dbus_proxy_call_sync (proxy, "Suspend",
-					      g_variant_new( "(b)",FALSE),
+		res = g_dbus_proxy_call_sync (proxy, "SuspendWithFlags",
+					      g_variant_new ("(t)", SD_LOGIND_ROOT_CHECK_INHIBITORS),
 					      G_DBUS_CALL_FLAGS_NONE,
 					      -1,
 					      NULL,
 					      &dbus_error
 					      );
+		if (g_error_matches (dbus_error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_METHOD)) {
+			g_clear_error (&dbus_error);
+			res = g_dbus_proxy_call_sync (proxy, "Suspend",
+						      g_variant_new( "(b)",FALSE),
+						      G_DBUS_CALL_FLAGS_NONE,
+						      -1,
+						      NULL,
+						      &dbus_error
+						      );
+		}
 		if (dbus_error != NULL ) {
 			g_warning ("Error in dbus - %s", dbus_error->message);
 			g_error_free (dbus_error);
@@ -469,13 +491,23 @@ gpm_control_hibernate (GpmControl *control, GError **error)
 			ret = FALSE;
 			goto out;
 		}
-		res = g_dbus_proxy_call_sync (proxy, "Hibernate",
-					      g_variant_new( "(b)",FALSE),
+		res = g_dbus_proxy_call_sync (proxy, "HibernateWithFlags",
+					      g_variant_new ("(t)", SD_LOGIND_ROOT_CHECK_INHIBITORS),
 					      G_DBUS_CALL_FLAGS_NONE,
 					      -1,
 					      NULL,
 					      &dbus_error
 					      );
+		if (g_error_matches (dbus_error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_METHOD)) {
+			g_clear_error (&dbus_error);
+			res = g_dbus_proxy_call_sync (proxy, "Hibernate",
+						      g_variant_new( "(b)",FALSE),
+						      G_DBUS_CALL_FLAGS_NONE,
+						      -1,
+						      NULL,
+						      &dbus_error
+						      );
+		}
 		if (dbus_error != NULL ) {
 			g_warning ("Error in dbus - %s", dbus_error->message);
 			g_error_free (dbus_error);
